@@ -1,0 +1,10 @@
+<Metadata>
+   <Name>QuantumController</Name>
+   <Description>A mod for controlling quantum effect in quantum level.</Description>
+   <Author>Krzyhau</Author>
+   <Version>0.1.0</Version>
+   <LibraryName>QuantumController.dll</LibraryName>
+   <Dependencies>
+      <DependencyInfo Name="HAT" MinimumVersion="1.1.1"/>
+   </Dependencies>
+</Metadata>
