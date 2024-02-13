@@ -113,6 +113,8 @@ namespace FEZEL
             }
         }
 
+        // mostly part of the original Quantumizer.Update(), but with custom logic for
+        // determining whether quantum trile should be rendered or not
         private bool RefreshQuantumTriles(Quantumizer self)
         {
             var BatchedInstances = (List<TrileInstance>)self.GetType().GetField("BatchedInstances", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(self);
@@ -145,18 +147,18 @@ namespace FEZEL
             return BatchedInstances.Count > 0;
         }
 
+        // determines whether trile should be rendered or not
         private bool ShouldBeQuantum(TrileInstance trileInstance)
         {
             var positionPhi = trileInstance.Data.PositionPhi;
             var trileScreenPos = PhiPosToScreenPos(positionPhi);
 
-            //var innerCircleDist = (trileScreenPos - new Vector2(0.5f, 0.5f)).Length();
-            //return innerCircleDist > 0.5f;
-
             return mask.IsMasked(trileScreenPos);
         }
 
 
+        // translates trile position into screen position ranging from [0,0] to [1,1]
+        // probably works only for orthographic camera since I'm doing some janky math on frustrum planes lmao
         private Vector2 PhiPosToScreenPos(Vector4 positionPhi)
         {
             var relativeDistance = CameraManager.Center - new Vector3(positionPhi.X, positionPhi.Y, positionPhi.Z);
@@ -177,7 +179,7 @@ namespace FEZEL
             return screenPos;
         }
 
-
+        // part of the original Quantumizer.Update(), just slightly refactored
         private void UpdateFreezeFrames()
         {
             FreezeFrames--;
@@ -190,6 +192,7 @@ namespace FEZEL
             }
         }
 
+        // also part of the original Quantumizer.Update() but refactored
         private void UpdateQuantumTriles(Quantumizer self)
         {
             var RandomTrileIds = (int[])self.GetType().GetField("RandomTrileIds", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self);
@@ -224,7 +227,7 @@ namespace FEZEL
             }
         }
 
-
+        // you guessed it, it's also part of the original Quantumizer.Update()
         private void RecullQuantumTriles()
         {
             var SsPosToRecull = new HashSet<Point>();
