@@ -78,5 +78,9 @@
       <HintPath>$(MonoModDir)\MonoMod.Utils.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="FEZ.Hooks">
+      <HintPath>$(FezDir)\FEZ.Hooks.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 </Project>
