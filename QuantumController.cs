@@ -8,6 +8,7 @@ using FezGame.Components;
 using FezGame.Services;
 using Microsoft.Xna.Framework;
 using MonoMod.RuntimeDetour;
+using QuantumController;
 using System.Reflection;
 
 namespace FEZEL
@@ -20,6 +21,11 @@ namespace FEZEL
         private readonly List<Vector4> AllEmplacements = new();
 
         private int FreezeFrames;
+
+        private TimeSpan timeSinceLastAdvance;
+
+        private MaskSequenceLoader mask;
+
 
         [ServiceDependency]
         public IGameCameraManager CameraManager { private get; set; }
@@ -59,6 +65,20 @@ namespace FEZEL
                     Quantumizer_Update(self, gameTime);
                 })
             );
+
+            mask = new("Mods/QuantumController/frames/");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if(QuantumizerDetour != null)
+            {
+                QuantumizerDetour.Dispose();
+                QuantumizerDetour = null;
+            }
+            
         }
 
         private void Quantumizer_Update(Quantumizer self, GameTime gameTime)
@@ -84,6 +104,13 @@ namespace FEZEL
             RecullQuantumTriles();
 
             base.Update(gameTime);
+
+            timeSinceLastAdvance += gameTime.ElapsedGameTime;
+            while(timeSinceLastAdvance.TotalSeconds > 1.0f / 30.0f)
+            {
+                mask.AdvanceFrame();
+                timeSinceLastAdvance -= TimeSpan.FromSeconds(1.0f / 30.0f);
+            }
         }
 
         private bool RefreshQuantumTriles(Quantumizer self)
@@ -123,7 +150,10 @@ namespace FEZEL
             var positionPhi = trileInstance.Data.PositionPhi;
             var trileScreenPos = PhiPosToScreenPos(positionPhi);
 
-            return trileScreenPos.Length() > 0.5f;
+            //var innerCircleDist = (trileScreenPos - new Vector2(0.5f, 0.5f)).Length();
+            //return innerCircleDist > 0.5f;
+
+            return mask.IsMasked(trileScreenPos);
         }
 
 
@@ -131,13 +161,18 @@ namespace FEZEL
         {
             var relativeDistance = CameraManager.Center - new Vector3(positionPhi.X, positionPhi.Y, positionPhi.Z);
 
-            var screenX = relativeDistance.Dot(CameraManager.View.Right);
+            /// ?!?!?!?!?!
+            var rightVector = CameraManager.View.Right;
+            rightVector.X *= -1;
+
+            var screenX = relativeDistance.Dot(rightVector);
             var screenY = relativeDistance.Dot(CameraManager.View.Up);
 
             var sizeX = Math.Abs(CameraManager.Frustum.Left.D + CameraManager.Frustum.Right.D);
             var sizeY = Math.Abs(CameraManager.Frustum.Top.D + CameraManager.Frustum.Bottom.D);
 
             var screenPos = new Vector2(screenX / sizeX, screenY / sizeY);
+            screenPos += new Vector2(0.5f, 0.5f);
 
             return screenPos;
         }
@@ -159,33 +194,32 @@ namespace FEZEL
         {
             var RandomTrileIds = (int[])self.GetType().GetField("RandomTrileIds", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self);
 
-            if (RandomHelper.Probability(0.9))
+            if (RandomHelper.Probability(0.1)) return;
+            
+            int instancesToRefresh = Random.Next(0, FreezeFrames >= 0 ? (RandomInstances.Count / 50) : RandomInstances.Count);
+            while (instancesToRefresh-- >= 0 && RandomInstances.Count > 0)
             {
-                int instancesToRefresh = Random.Next(0, FreezeFrames >= 0 ? (RandomInstances.Count / 50) : RandomInstances.Count);
-                while (instancesToRefresh-- >= 0 && RandomInstances.Count > 0)
-                {
-                    int trileInstanceIndex = Random.Next(0, RandomInstances.Count);
-                    var trileInstance = RandomInstances[trileInstanceIndex];
-                    RandomInstances.RemoveAt(trileInstanceIndex);
+                int trileInstanceIndex = Random.Next(0, RandomInstances.Count);
+                var trileInstance = RandomInstances[trileInstanceIndex];
+                RandomInstances.RemoveAt(trileInstanceIndex);
 
-                    if (!trileInstance.VisualTrileId.HasValue || trileInstance.TrileId == trileInstance.VisualTrileId)
+                if (!trileInstance.VisualTrileId.HasValue || trileInstance.TrileId == trileInstance.VisualTrileId)
+                {
+                    if (!LevelMaterializer.CullInstanceOut(trileInstance))
                     {
-                        if (!LevelMaterializer.CullInstanceOut(trileInstance))
-                        {
-                            LevelMaterializer.CullInstanceOut(trileInstance, skipUnregister: true);
-                        }
-                        trileInstance.VisualTrileId = RandomHelper.InList(RandomTrileIds);
-                        trileInstance.RefreshTrile();
-                        LevelMaterializer.CullInstanceIn(trileInstance, forceAdd: true);
+                        LevelMaterializer.CullInstanceOut(trileInstance, skipUnregister: true);
                     }
-                    trileInstance.NeedsRandomCleanup = true;
-                    if (trileInstance.InstanceId != -1)
-                    {
-                        int emplacementIndex = Random.Next(0, RandomInstances.Count);
-                        var emplacement = AllEmplacements[emplacementIndex];
-                        AllEmplacements.RemoveAt(emplacementIndex);
-                        LevelMaterializer.GetTrileMaterializer(trileInstance.VisualTrile).FakeUpdate(trileInstance.InstanceId, emplacement);
-                    }
+                    trileInstance.VisualTrileId = RandomHelper.InList(RandomTrileIds);
+                    trileInstance.RefreshTrile();
+                    LevelMaterializer.CullInstanceIn(trileInstance, forceAdd: true);
+                }
+                trileInstance.NeedsRandomCleanup = true;
+                if (trileInstance.InstanceId != -1)
+                {
+                    int emplacementIndex = Random.Next(0, RandomInstances.Count);
+                    var emplacement = AllEmplacements[emplacementIndex];
+                    AllEmplacements.RemoveAt(emplacementIndex);
+                    LevelMaterializer.GetTrileMaterializer(trileInstance.VisualTrile).FakeUpdate(trileInstance.InstanceId, emplacement);
                 }
             }
         }

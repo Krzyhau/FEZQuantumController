@@ -78,8 +78,8 @@
       <HintPath>$(MonoModDir)\MonoMod.Utils.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="FEZ.Hooks">
-      <HintPath>$(FezDir)\FEZ.Hooks.dll</HintPath>
+    <Reference Include="FEZRepacker.Core">
+      <HintPath>$(FezDir)\FEZRepacker.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
